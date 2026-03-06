@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Diccionario Retro Windows XP</title>
     
-    <!-- XP.css para el estilo Windows XP -->
+    <!-- XP.css para estilo Windows XP auténtico -->
     <link rel="stylesheet" href="https://unpkg.com/xp.css">
     
     <style>
         body {
-            background: #008080; /* Verde teal clásico de XP */
+            background: #008080; /* Teal clásico de XP */
             font-family: 'Tahoma', sans-serif;
             margin: 0;
             padding: 20px;
@@ -21,7 +21,7 @@
         }
         .window {
             width: 100%;
-            max-width: 700px;
+            max-width: 720px;
             background: #c0c0c0;
             border: 2px solid #000080;
             box-shadow: 4px 4px 10px rgba(0,0,0,0.5);
@@ -70,7 +70,7 @@
             border-style: inset;
         }
         #result {
-            min-height: 100px;
+            min-height: 120px;
             padding: 12px;
             background: #f0f0f0;
             border: 2px inset #ffffff;
@@ -78,6 +78,7 @@
             font-family: 'Courier New', Courier, monospace;
             font-size: 14px;
             line-height: 1.5;
+            overflow-y: auto;
         }
         .cursor {
             display: inline-block;
@@ -110,7 +111,7 @@
     
     <div class="window-body">
         <div class="search-bar">
-            <input type="text" id="wordInput" placeholder="Escribe una palabra... (ej: casa, amor, mate)">
+            <input type="text" id="wordInput" placeholder="Escribe una palabra... (ej: casa, mate, che, boludo)">
             <button onclick="buscarPalabra()">Buscar</button>
         </div>
         
@@ -124,82 +125,77 @@
 
     async function buscarPalabra() {
         const palabra = document.getElementById('wordInput').value.trim().toLowerCase();
-        if (!palabra) return alert('¡Escribe una palabra primero, che!');
+        if (!palabra) return alert('¡Poné una palabra, loco!');
 
-        resultDiv.innerHTML = 'Cargando definición...';
+        resultDiv.innerHTML = 'Cargando definición retro...';
         
         try {
-            const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/es/${encodeURIComponent(palabra)}`);
+            const response = await fetch(`https://api.freedictionaryapi.com/api/v1/entries/es/${encodeURIComponent(palabra)}`);
             
             if (!response.ok) {
-                throw new Error('Palabra no encontrada o problema con la API.');
+                throw new Error('No encontré esa palabra o la API anda medio colgada.');
             }
             
             const data = await response.json();
             mostrarResultadoConEfecto(data);
             
         } catch (error) {
-            resultDiv.innerHTML = `<span class="error">Error: ${error.message}</span><br><br>Recordá: abrí este archivo con un servidor local (python -m http.server) para evitar problemas de CORS.`;
+            resultDiv.innerHTML = `<span class="error">Error: ${error.message}</span><br><br>Si sigue fallando, chequeá la consola (F12) y contame qué dice exactamente.`;
         }
     }
 
     function mostrarResultadoConEfecto(data) {
-        if (!Array.isArray(data) || data.length === 0) {
-            typeWriter('<span class="error">No se encontraron definiciones para esta palabra.</span>');
+        if (!data || !data.entries || data.entries.length === 0) {
+            typeWriter('<span class="error">No hay definiciones para esa palabra, probá otra.</span>');
             return;
         }
 
-        const entry = data[0];
+        const entry = data.entries[0];
         let texto = `${entry.word.toUpperCase()}\n\n`;
 
-        entry.meanings.forEach(meaning => {
-            texto += `[${meaning.partOfSpeech || 'Definición'}]\n`;
+        entry.senses.forEach((sense, index) => {
+            texto += `Definición ${index + 1}:\n${sense.definition || 'Sin definición disponible'}\n`;
             
-            meaning.definitions.forEach((def, i) => {
-                texto += `${i+1}. ${def.definition}\n`;
-                if (def.example) {
-                    texto += `   Ej: ${def.example}\n`;
-                }
-            });
-
-            if (meaning.synonyms && meaning.synonyms.length > 0) {
-                texto += `\nSinónimos: ${meaning.synonyms.slice(0, 8).join(', ')}${meaning.synonyms.length > 8 ? '...' : ''}\n`;
+            if (sense.examples && sense.examples.length > 0) {
+                texto += `Ejemplo: ${sense.examples[0]}\n`;
             }
             
-            texto += '\n';
+            if (sense.synonyms && sense.synonyms.length > 0) {
+                texto += `\nSinónimos: ${sense.synonyms.slice(0, 10).join(', ')}${sense.synonyms.length > 10 ? '...' : ''}\n`;
+            }
+            
+            texto += '\n------------------------\n';
         });
 
         typeWriter(texto);
     }
 
     function typeWriter(texto) {
-        if (isTyping) return; // Evitar solapamientos
+        if (isTyping) return;
         isTyping = true;
         
         resultDiv.innerHTML = '';
         let i = 0;
-        const speed = 30; // milisegundos por letra (más bajo = más rápido)
+        const speed = 25; // velocidad de escritura (menor = más rápido)
 
         function escribir() {
             if (i < texto.length) {
                 resultDiv.innerHTML += texto.charAt(i);
                 i++;
+                resultDiv.scrollTop = resultDiv.scrollHeight;
                 setTimeout(escribir, speed);
             } else {
                 resultDiv.innerHTML += '<span class="cursor"> </span>';
                 isTyping = false;
             }
-            resultDiv.scrollTop = resultDiv.scrollHeight; // Auto-scroll
         }
 
         escribir();
     }
 
-    // Buscar con Enter
+    // Buscar presionando Enter
     document.getElementById('wordInput').addEventListener('keypress', e => {
-        if (e.key === 'Enter') {
-            buscarPalabra();
-        }
+        if (e.key === 'Enter') buscarPalabra();
     });
 </script>
 </body>
