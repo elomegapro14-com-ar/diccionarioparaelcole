@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diccionario Retro Windows XP</title>
+    
+    <!-- XP.css para el estilo Windows XP -->
+    <link rel="stylesheet" href="https://unpkg.com/xp.css">
+    
+    <style>
+        body {
+            background: #008080; /* Verde teal clásico de XP */
+            font-family: 'Tahoma', sans-serif;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        .window {
+            width: 100%;
+            max-width: 700px;
+            background: #c0c0c0;
+            border: 2px solid #000080;
+            box-shadow: 4px 4px 10px rgba(0,0,0,0.5);
+        }
+        .title-bar {
+            background: linear-gradient(to right, #000080, #1084d0);
+            color: white;
+            padding: 4px 8px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .title-bar-buttons button {
+            width: 20px;
+            height: 20px;
+            margin-left: 4px;
+            background: #c0c0c0;
+            border: 1px solid #000;
+            font-size: 10px;
+            line-height: 18px;
+        }
+        .window-body {
+            padding: 16px;
+            background: #ffffff;
+        }
+        .search-bar {
+            display: flex;
+            margin-bottom: 16px;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 6px;
+            font-size: 14px;
+            border: 2px inset #ffffff;
+            background: white;
+        }
+        button {
+            padding: 6px 12px;
+            margin-left: 8px;
+            background: #c0c0c0;
+            border: 2px outset #ffffff;
+            cursor: pointer;
+        }
+        button:active {
+            border-style: inset;
+        }
+        #result {
+            min-height: 100px;
+            padding: 12px;
+            background: #f0f0f0;
+            border: 2px inset #ffffff;
+            white-space: pre-wrap;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 16px;
+            background: #000;
+            vertical-align: middle;
+            animation: blink 0.8s infinite;
+        }
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+        .error {
+            color: #8b0000;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="window">
+    <div class="title-bar">
+        <span>Diccionario Retro - Windows XP Edition</span>
+        <div class="title-bar-buttons">
+            <button>−</button>
+            <button>□</button>
+            <button>×</button>
+        </div>
+    </div>
+    
+    <div class="window-body">
+        <div class="search-bar">
+            <input type="text" id="wordInput" placeholder="Escribe una palabra... (ej: casa, amor, mate)">
+            <button onclick="buscarPalabra()">Buscar</button>
+        </div>
+        
+        <div id="result"></div>
+    </div>
+</div>
+
+<script>
+    const resultDiv = document.getElementById('result');
+    let isTyping = false;
+
+    async function buscarPalabra() {
+        const palabra = document.getElementById('wordInput').value.trim().toLowerCase();
+        if (!palabra) return alert('¡Escribe una palabra primero, che!');
+
+        resultDiv.innerHTML = 'Cargando definición...';
+        
+        try {
+            const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/es/${encodeURIComponent(palabra)}`);
+            
+            if (!response.ok) {
+                throw new Error('Palabra no encontrada o problema con la API.');
+            }
+            
+            const data = await response.json();
+            mostrarResultadoConEfecto(data);
+            
+        } catch (error) {
+            resultDiv.innerHTML = `<span class="error">Error: ${error.message}</span><br><br>Recordá: abrí este archivo con un servidor local (python -m http.server) para evitar problemas de CORS.`;
+        }
+    }
+
+    function mostrarResultadoConEfecto(data) {
+        if (!Array.isArray(data) || data.length === 0) {
+            typeWriter('<span class="error">No se encontraron definiciones para esta palabra.</span>');
+            return;
+        }
+
+        const entry = data[0];
+        let texto = `${entry.word.toUpperCase()}\n\n`;
+
+        entry.meanings.forEach(meaning => {
+            texto += `[${meaning.partOfSpeech || 'Definición'}]\n`;
+            
+            meaning.definitions.forEach((def, i) => {
+                texto += `${i+1}. ${def.definition}\n`;
+                if (def.example) {
+                    texto += `   Ej: ${def.example}\n`;
+                }
+            });
+
+            if (meaning.synonyms && meaning.synonyms.length > 0) {
+                texto += `\nSinónimos: ${meaning.synonyms.slice(0, 8).join(', ')}${meaning.synonyms.length > 8 ? '...' : ''}\n`;
+            }
+            
+            texto += '\n';
+        });
+
+        typeWriter(texto);
+    }
+
+    function typeWriter(texto) {
+        if (isTyping) return; // Evitar solapamientos
+        isTyping = true;
+        
+        resultDiv.innerHTML = '';
+        let i = 0;
+        const speed = 30; // milisegundos por letra (más bajo = más rápido)
+
+        function escribir() {
+            if (i < texto.length) {
+                resultDiv.innerHTML += texto.charAt(i);
+                i++;
+                setTimeout(escribir, speed);
+            } else {
+                resultDiv.innerHTML += '<span class="cursor"> </span>';
+                isTyping = false;
+            }
+            resultDiv.scrollTop = resultDiv.scrollHeight; // Auto-scroll
+        }
+
+        escribir();
+    }
+
+    // Buscar con Enter
+    document.getElementById('wordInput').addEventListener('keypress', e => {
+        if (e.key === 'Enter') {
+            buscarPalabra();
+        }
+    });
+</script>
+</body>
+</html>
